@@ -1,21 +1,48 @@
 var React = require('react');
+var Reflux = require('reflux');
 var markdown = require('markdown').markdown;
 
+var EditorActions = Reflux.createActions(['contentChanged']);
+
+var ContentStore = (function() {
+	var _currentContent = '';
+	return Reflux.createStore({
+		listenables: EditorActions,
+		onContentChanged: function(newContent) {
+			_currentContent = newContent;
+			this.trigger(_currentContent);
+		},
+		getInitialState: function() {
+			return ["#Hello world!", "Welcome to **markdown**"].join("\n\n");
+		}
+	});
+})();
+
 var SimpleEditor = React.createClass({
-	handleChange: function() {
-		this.props.onContentChanged(this.refs.textarea.getDOMNode().value);
+	getInitialState: function() {
+		return { value: ContentStore.getInitialState() };
+	},
+	handleChange: function(event) {
+		EditorActions.contentChanged(event.target.value);
 	},
 	render: function() {
 		return (
 			<div className="editor">
 				<h3>Input</h3>
-				<textarea ref="textarea" onChange={this.handleChange} value={this.props.value}></textarea>
+				<textarea onChange={this.handleChange} defaultValue={this.state.value}></textarea>
 			</div>
 		);
 	}
 });
 
 var SimplePreview = React.createClass({
+	mixins: [Reflux.listenTo(ContentStore, 'onContentChanged', 'onContentChanged')],
+	getInitialState: function() {
+		return { html : '' };
+	},
+	onContentChanged: function(newContent) {
+		this.setState({ html: markdown.toHTML(newContent) });
+	},
 	render: function() {
 		return (
 			<div>
@@ -23,7 +50,7 @@ var SimplePreview = React.createClass({
 				<div
 					className="preview"
 					dangerouslySetInnerHTML={{
-						__html: markdown.toHTML(this.props.src)
+						__html: this.state.html
 					}}
 				/>
 			</div>
@@ -32,19 +59,11 @@ var SimplePreview = React.createClass({
 });
 
 var SimpleEditorWindow = React.createClass({
-	getInitialState: function() {
-		return {
-			source: ['#Hello world!', 'This is **markdown** ...'].join("\n")
-		};
-	},
-	handleContentChanged: function(newContent) {
-		this.setState({source: newContent});
-	},
 	render: function() {
 		return (
 			<div>
-				<SimpleEditor value={this.state.source} onContentChanged={this.handleContentChanged} />
-				<SimplePreview src={this.state.source} />
+				<SimpleEditor />
+				<SimplePreview />
 			</div>
 		);
 	}
