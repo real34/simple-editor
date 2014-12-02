@@ -1,0 +1,19 @@
+{
+  "name": "simple-editor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "browserify js/app.js -t reactify -o dist/simple-editor.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "markdown": "^0.5.0",
+    "react": "^0.12.1"
+  },
+  "devDependencies": {
+    "browserify": "^6.3.3",
+    "reactify": "^0.17.1"
+  }
+}
