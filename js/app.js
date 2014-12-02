@@ -18,6 +18,20 @@ var ContentStore = (function() {
 	});
 })();
 
+var ContentHistoryStore = Reflux.createStore({
+	init: function() {
+		this.history = [];
+		this.listenTo(ContentStore, this.onContentChanged, this.onContentChanged);
+	},
+	onContentChanged: function(newContent) {
+		this.history.push({
+			date: new Date(),
+			content: newContent
+		});
+		this.trigger(this.history);
+	}
+});
+
 var SimpleEditor = React.createClass({
 	getInitialState: function() {
 		return { value: ContentStore.getInitialState() };
