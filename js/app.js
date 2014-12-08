@@ -45,6 +45,13 @@ var EventStore = createStore({
 	},
 	getEvents: function() {
 		return this.events;
+	},
+	dehydrate: function() {
+		return { events: this.events }
+	},
+	rehydrate: function(state) {
+		this.events = state.events;
+		this.emitChange();
 	}
 });
 
