@@ -9,10 +9,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "flux": "^2.0.1",
+    "dispatchr": "^0.2.9",
     "markdown": "^0.5.0",
-    "react": "^0.12.1",
-    "reflux": "^0.2.0"
+    "react": "^0.12.1"
   },
   "devDependencies": {
     "browserify": "^6.3.3",

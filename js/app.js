@@ -1,87 +1,62 @@
 var markdown = require('markdown').markdown;
 var React = require('react');
-var AppDispatcher = require('flux').Dispatcher;
-var util = require('util');
-var EventEmitter = require('events').EventEmitter;
+var Dispatchr = require('dispatchr')();
+var createStore = require('dispatchr/utils/createStore');
 
-var EditorConstants = {
-	CONTENT_CHANGED: 'CONTENT_CHANGED',
-	FILE_LOADED: 'FILE_LOADED'
-};
+var ContentStore = createStore({
+	storeName: 'ContentStore',
+	initialize: function() {
+		this.currentContent = ["#Hello world!", "Welcome to **markdown**"].join("\n\n");
+	},
+	handlers: {
+		'CONTENT_CHANGED': 'onContentChanged',
+		'FILE_LOADED': 'onContentChanged'
+	},
+	onContentChanged: function(payload) {
+		this.currentContent = payload.content;
+		this.emitChange();
+	},
+	getCurrentContent: function() {
+		return this.currentContent;
+	}
+});
+
+Dispatchr.registerStore(ContentStore);
+
+var dispatcher = new Dispatchr();
 var EditorActions = {
 	changeContent: function(newContent) {
-		AppDispatcher.dispatch({
-			actionType: EditorConstants.CONTENT_CHANGED,
+		dispatcher.dispatch('CONTENT_CHANGED', {
 			content: newContent
 		});
 	},
 	loadFile: function(filename, newContent) {
-		AppDispatcher.dispatch({
-			actionType: EditorConstants.FILE_LOADED,
+		dispatcher.dispatch('FILE_LOADED', {
 			filename: filename,
 			content: newContent
 		});
 	}
 };
 
-function ContentStore() {
-	var self = this;
-	this._currentContent = ["#Hello world!", "Welcome to **markdown**"].join("\n\n");
-	AppDispatcher.register(function(payload) {
-		var action = payload.actionType;
-
-		switch (action.actionType) {
-			case EditorConstants.CONTENT_CHANGED:
-			case EditorConstants.FILE_LOADED:
-				self.updateContent(content);
-			break;
-		}
-	});
-}
-util.inherits(ContentStore, EventEmitter);
-ContentStore.prototype.getCurrentContent = function() {
-	return this._currentContent;
-};
-ContentStore.prototype.updateContent = function(newContent) {
-	this._currentContent = newContent;
-	this.emit('change');
-};
-
-var ContentStore = new ContentStore();
-
-// var ContentStore = (function() {
-// 	var _currentContent = '';
-// 	return Reflux.createStore({
-// 		listenables: EditorActions,
-// 		onContentChanged: function(newContent) {
-// 			_currentContent = newContent;
-// 			this.trigger(_currentContent);
-// 		},
-// 		onFileLoaded: function(fileInformation) {
-// 			_currentContent = fileInformation.content;
-// 			this.trigger(_currentContent);
-// 		},
-// 		getInitialState: function() {
-// 			return ["#Hello world!", "Welcome to **markdown**"].join("\n\n");
-// 		}
-// 	});
-// })();
-
-var SimpleEditor = React.createClass({
-	_stateFromStore: function() {
-		return { value: ContentStore.getCurrentContent() }
-	},
-	getInitialState: function() {
-		return this._stateFromStore();
-	},
-	_onChange: function() {
-		this.setState(this._stateFromStore());
-	},
+var ContentStoreListenerMixin = {
 	componentDidMount: function() {
-		ContentStore.on('change', this._onChange);
+		dispatcher.getStore('ContentStore').addChangeListener(this._onChange);
 	},
 	componentWillUnmount: function() {
-		ContentStore.removeListener('change', this._onChange);
+		dispatcher.getStore('ContentStore').removeChangeListener(this._onChange);
+	},
+	_onChange: function() {
+		this.setState(this.getInitialState());
+	},
+	getInitialState: function() {
+		return this._stateFromStore(dispatcher.getStore('ContentStore'));
+	},
+};
+
+var SimpleEditor = React.createClass({
+	mixins: [ContentStoreListenerMixin],
+	_stateFromStore: function(store) {
+		return { value: store.getCurrentContent() }
 	},
 	handleChange: function(event) {
 		EditorActions.changeContent(event.target.value);
@@ -97,12 +72,9 @@ var SimpleEditor = React.createClass({
 });
 
 var SimplePreview = React.createClass({
-	// mixins: [Reflux.listenTo(ContentStore, 'onContentChanged', 'onContentChanged')],
-	getInitialState: function() {
-		return { html : '' };
-	},
-	onContentChanged: function(newContent) {
-		this.setState({ html: markdown.toHTML(newContent) });
+	mixins: [ContentStoreListenerMixin],
+	_stateFromStore: function(store) {
+		return { html: markdown.toHTML(store.getCurrentContent()) }
 	},
 	render: function() {
 		return (
@@ -120,16 +92,16 @@ var SimplePreview = React.createClass({
 });
 
 var FileManager = React.createClass({
-	// mixins: [Reflux.listenTo(ContentStore, 'onContentChanged', 'onContentChanged')],
+	mixins: [ContentStoreListenerMixin],
+	_stateFromStore: function(store) {
+		return { markdown: store.getCurrentContent() }
+	},
 	handleUpload: function(event) {
 		var reader = new FileReader();
 		var file = event.target.files[0];
 
 		reader.onload = function() {
-			EditorActions.fileLoaded({
-				name: file.name,
-				content: this.result
-			});
+			EditorActions.loadFile(file.name, this.result);
 		};
 		reader.readAsText(file);
 	},
@@ -141,9 +113,6 @@ var FileManager = React.createClass({
 		var fileURL = window.URL.createObjectURL(blob); // window.URL.revokeObjectURL(fileURL);
 		event.target.setAttribute('download', window.prompt('Please enter the filename', 'simple-text.md'));
 		event.target.setAttribute('href', fileURL);
-	},
-	onContentChanged: function(newContent) {
-		this.setState({ markdown: newContent });
 	},
 	render: function() {
 		return (
