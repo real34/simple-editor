@@ -99,7 +99,7 @@ var SimpleEditor = React.createClass({
 		return (
 			<div className="editor">
 				<h3>Input</h3>
-				<textarea onChange={this.handleChange} defaultValue={this.state.value}></textarea>
+				<textarea onChange={this.handleChange} value={this.state.value}></textarea>
 			</div>
 		);
 	}
