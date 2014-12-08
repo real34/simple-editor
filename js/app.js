@@ -125,35 +125,64 @@ var SimplePreview = React.createClass({
 	}
 });
 
+var FileUploader = React.createClass({
+	handleUpload: function(event) {
+		var onUploadCallback = this.props.onUpload;
+		var reader = new FileReader();
+		var file = event.target.files[0];
+
+		reader.onload = function() {
+			onUploadCallback(file.name, this.result);
+		};
+		reader.readAsText(file);
+	},
+	render: function() {
+		return (
+			<input type="file" onChange={ this.handleUpload } />
+		);
+	}
+});
+
+var FileDownloader = React.createClass({
+	// For a wider range of compatibility, see https://github.com/eligrey/FileSaver.js
+	handleDownload: function(event) {
+		var fileData = this.props.getFileData();
+		var blob = new Blob(
+			[fileData.content],
+			{ type: fileData.type }
+		);
+		var fileURL = window.URL.createObjectURL(blob); // consider also using `window.URL.revokeObjectURL(fileURL);` to prevent memory leaks
+		event.target.setAttribute('download', fileData.name);
+		event.target.setAttribute('href', fileURL);
+	},
+	render: function() {
+		return (
+			<a href="" download="" onClick={ this.handleDownload }>{ this.props.label }</a>
+		);
+	}
+});
+
 var FileManager = React.createClass({
 	mixins: [ContentStoreListenerMixin],
 	_stateFromStore: function(store) {
 		return { markdown: store.getCurrentContent() }
 	},
-	handleUpload: function(event) {
-		var reader = new FileReader();
-		var file = event.target.files[0];
-
-		reader.onload = function() {
-			EditorActions.loadFile(file.name, this.result);
-		};
-		reader.readAsText(file);
+	handleContentUpload: function(filename, content) {
+		EditorActions.loadFile(filename, content);
 	},
-	handleDownload: function(event) {
-		// For a wider range of compatibility, see https://github.com/eligrey/FileSaver.js
-		var blob = new Blob([this.state.markdown], {
-			type: "text/markdown;charset=utf-8;"
-		});
-		var fileURL = window.URL.createObjectURL(blob); // window.URL.revokeObjectURL(fileURL);
-		event.target.setAttribute('download', window.prompt('Please enter the filename', 'simple-text.md'));
-		event.target.setAttribute('href', fileURL);
+	downloadedFileData: function() {
+		return {
+			content: this.state.markdown,
+			type: "text/markdown;charset=utf-8;",
+			name: window.prompt('Please enter the filename', 'simple-text.md')
+		};
 	},
 	render: function() {
 		return (
-			<ul>
-				<li><input type="file" name="file-uploader" onChange={ this.handleUpload } /></li>
-				<li><a href="" download="" onClick={ this.handleDownload }>Download Mardown file</a></li>
-			</ul>
+			<p>
+				<FileUploader onUpload={ this.handleContentUpload } />
+				- <FileDownloader getFileData={ this.downloadedFileData } label="Download Mardown file" />
+			</p>
 		);
 	}
 });
@@ -167,57 +196,46 @@ var DebugBar = React.createClass({
 		this.initialState = dispatcher.dehydrate();
 	},
 
-	handleDownloadState: function() {
-		var currentAppState = JSON.stringify(dispatcher.dehydrate());
-		var fileURL = window.URL.createObjectURL(new Blob(
-			[currentAppState],
-			{ type: "text/json;charset=utf-8;"}
-		));
-		var nowSuffix = new Date(Date.now()).toLocaleString();
-		event.target.setAttribute('download', 'simple-editor-state-' + nowSuffix);
-		event.target.setAttribute('href', fileURL);
+	downloadedStateData: function() {
+		return {
+			content: JSON.stringify(dispatcher.dehydrate()),
+			type: "text/json;charset=utf-8;",
+			name: 'simple-editor-state-' + new Date(Date.now()).toLocaleString()
+		}
 	},
-	handleUploadState: function(event) {
-		var reader = new FileReader();
-		reader.onload = function() {
-			dispatcher.rehydrate(JSON.parse(this.result));
-		};
-		reader.readAsText(event.target.files[0]);
+	handleUploadState: function(filename, content) {
+		dispatcher.rehydrate(JSON.parse(content));
 	},
 
-	handleDownloadHistory: function() {
+	downloadedHistoryData: function() {
 		var currentAppHistory = {
 			initialState: this.initialState,
 			events: dispatcher.getStore('EventStore').getEvents()
 		};
-		var fileURL = window.URL.createObjectURL(new Blob(
-			[JSON.stringify(currentAppHistory)],
-			{ type: "text/json;charset=utf-8;"}
-		));
-		var nowSuffix = new Date(Date.now()).toLocaleString();
-		event.target.setAttribute('download', 'simple-editor-history-' + nowSuffix);
-		event.target.setAttribute('href', fileURL);
+		return {
+			content: JSON.stringify(currentAppHistory),
+			type: "text/json;charset=utf-8;",
+			name: 'simple-editor-history-' + new Date(Date.now()).toLocaleString()
+		}
 	},
-	handleUploadHistory: function(event) {
-		var reader = new FileReader();
-		reader.onload = function() {
-			var HISTORY_SPEED_IN_MS = 100;
-			var history = JSON.parse(this.result);
-			console.debug('rebuilding interface from history...');
-			console.debug('... back to initial state');
-			dispatcher.rehydrate(history.initialState);
+	handleUploadHistory: function(filename, content) {
+		var HISTORY_SPEED_IN_MS = 100;
+		var history = JSON.parse(content);
+		console.debug('rebuilding interface from history contained in "' + filename + '"...');
+		console.debug('... back to initial state');
+		dispatcher.rehydrate(history.initialState);
 
-			window.setTimeout(function applyNextEvent() {
-				var eventToApply = history.events.shift();
-				console.debug('... applying next event - left: ' + history.events.length);
-				dispatcher.dispatch(eventToApply.name, eventToApply.payload);
+		(function applyNextEvent() {
+			var eventToApply = history.events.shift();
+			console.debug('... applying next event - remaining: ' + history.events.length);
+			dispatcher.dispatch(eventToApply.name, eventToApply.payload);
 
-				if (history.events.length) {
-					window.setTimeout(applyNextEvent, HISTORY_SPEED_IN_MS);
-				}
-			}, HISTORY_SPEED_IN_MS);
-		};
-		reader.readAsText(event.target.files[0]);
+			if (history.events.length) {
+				window.setTimeout(applyNextEvent, HISTORY_SPEED_IN_MS);
+			} else {
+				console.debug('that\'s all folks!');
+			}
+		})();
 	},
 
 	render: function() {
@@ -228,12 +246,12 @@ var DebugBar = React.createClass({
 					- {this.state.eventCount} events tracked
 				</p>
 				<p>
-					<input type="file" onChange={ this.handleUploadState } />
-					- <a href="" download="" onClick={ this.handleDownloadState }>Download current state</a>
+					<FileUploader onUpload={ this.handleUploadState } />
+					- <FileDownloader getFileData={ this.downloadedStateData } label="Download current application state" />
 				</p>
 				<p>
-					<input type="file" onChange={ this.handleUploadHistory } />
-					- <a href="" download="" onClick={ this.handleDownloadHistory }>Download actions history</a>
+					<FileUploader onUpload={ this.handleUploadHistory } />
+					- <FileDownloader getFileData={ this.downloadedHistoryData } label="Download application history" />
 				</p>
 			</div>
 		);
