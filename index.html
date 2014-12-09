@@ -6,8 +6,26 @@
 	<title>Soublaïme taixte</title>
 
 	<style type="text/css">
+		.debug-bar {
+			background: #cecece;
+		}
+		.debug-bar > p {
+			background: #ddd;
+			margin-left: 0.5em;
+			padding: 0.5em 1em;
+			display: inline-block;
+			vertical-align: top;
+		}
+		a[download], input[type=file] {
+			margin-left: 0.5em;
+		}
+		.editor, .preview-area {
+			display: inline-block;
+			vertical-align: top;
+			width: 45%;
+		}
 		.editor textarea {
-			width: 100%;
+			width: 95%;
 			height: 20em;
 		}
 		.preview {
@@ -15,11 +33,18 @@
 			border: 1px solid #ccc;
 			padding: 2em 1em;
 		}
+
+		@media screen and (max-width: 640px) {
+			.editor, .preview-area {
+				display: block;
+				width: auto;
+			}
+		}
 	</style>
 </head>
 
 <body>
-	<h1>Ouelcaume !</h1>
+	<h1>Simple Editor!</h1>
 	<div id="editor"></div>
 
 	<script src="dist/simple-editor.js"></script>

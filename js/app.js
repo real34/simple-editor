@@ -119,7 +119,7 @@ var SimplePreview = React.createClass({
 	},
 	render: function() {
 		return (
-			<div>
+			<div className="preview-area">
 				<h3>Preview</h3>
 				<div
 					className="preview"
@@ -186,9 +186,10 @@ var FileManager = React.createClass({
 	},
 	render: function() {
 		return (
-			<p>
+			<p className="file-manager">
+				Mardown source:
+				<FileDownloader getFileData={ this.downloadedFileData } label="Download" />
 				<FileUploader onUpload={ this.handleContentUpload } />
-				- <FileDownloader getFileData={ this.downloadedFileData } label="Download Mardown file" />
 			</p>
 		);
 	}
@@ -247,18 +248,20 @@ var DebugBar = React.createClass({
 
 	render: function() {
 		return (
-			<div>
+			<div className="debug-bar">
 				<p>
 					<strong>DEBUG BAR</strong>
 					- {this.state.eventCount} events tracked
 				</p>
 				<p>
+					Current application state:
+					<FileDownloader getFileData={ this.downloadedStateData } label="Download" />
 					<FileUploader onUpload={ this.handleUploadState } />
-					- <FileDownloader getFileData={ this.downloadedStateData } label="Download current application state" />
 				</p>
 				<p>
+					Application history:
+					<FileDownloader getFileData={ this.downloadedHistoryData } label="Download" />
 					<FileUploader onUpload={ this.handleUploadHistory } />
-					- <FileDownloader getFileData={ this.downloadedHistoryData } label="Download application history" />
 				</p>
 			</div>
 		);
