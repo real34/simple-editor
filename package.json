@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "build_args": "js/app.js -t reactify -o dist/simple-editor.js",
   "scripts": {
-    "build": "browserify js/app.js -t reactify -o dist/simple-editor.js"
+    "build": "browserify $npm_package_build_args",
+    "dev": "python -m SimpleHTTPServer 8000 & watchify $npm_package_build_args"
   },
   "author": "",
   "license": "ISC",
@@ -15,6 +17,7 @@
   },
   "devDependencies": {
     "browserify": "^6.3.3",
-    "reactify": "^0.17.1"
+    "reactify": "^0.17.1",
+    "watchify": "^2.1.1"
   }
 }
